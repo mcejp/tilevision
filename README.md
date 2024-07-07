@@ -1,5 +1,13 @@
 Usage example:
 
+    ./websocketd \
+        --address=localhost \
+        --port=4000 \
+        --staticdir=static \
+        python -u -m my_kernel
+
+Example kernel:
+
 ```python
 from tilevision.matplotlib_util import bg_from_heightmap
 from tilevision.path_util import circle, line, line_polar, polyline, rectangle_centered, star, triangle
