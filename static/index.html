@@ -1,0 +1,215 @@
+<html>
+<head>
+    <script src="tailwindcss.js"></script>
+</head>
+<body>
+
+<script type="importmap">
+{
+    "imports": {
+    "vue": "./vue.esm-browser.js"
+    }
+}
+</script>
+
+<div id="app">
+  <connection-state :state="state" :host="host"></connection-state>
+
+  <div class="flex">
+    <pane>
+      <pane-heading>{{title}}</pane-heading>
+      <btn @click="pauseOrResume()">{{paused ? "Resume" : "Pause"}}</btn>
+      <btn @click="step()">Step</btn>
+      <canvas ref="plot" width="1300" height="800" class="mt-2"></canvas>
+    </pane>
+  </div>
+
+  <pre class="text-xs" style="column-count: 3; column-gap: 20px;" v-html="report"></pre>
+
+  <div v-for="row in logRows" style="font-size: 12px">{{row}}</div>
+</div>
+
+<script type="module">
+import { createApp } from 'vue'
+import { applyPageStyle, Btn, Pane, PaneHeading } from "./apollo.mjs"
+
+const ConnectionState = {
+  props: {
+    host: String,
+    state: String,
+  },
+  template: `
+  <div class="font-bold mx-2 my-1 px-3 py-1 text-xl text-white rounded"
+       :class="{ 'bg-green-600': state === 'CONNECTED', 'bg-red-600': state !== 'CONNECTED' }">{{state}} | {{host}}</div>
+  `,
+}
+
+const MyComponent = {
+  data() {
+    return {
+      ws: null,
+      host: location.origin.replace(/^http/, 'ws') + "/",
+      state: "NOT CONNECTED",
+      title: "new",
+      paused: false,
+      report: "",
+
+      logRows: [],
+    }
+  },
+
+  mounted() {
+      applyPageStyle();
+
+      const ws = new WebSocket(this.host);
+      ws.binaryType = 'arraybuffer';
+
+      let text = "";
+
+      ws.onmessage = (msg) => {
+          if (!msg.data.startsWith('{"command":')) {
+              console.log(msg.data)
+              return;
+          }
+
+          let model;
+          try {
+              model = JSON.parse(msg.data);
+          }
+          catch (ex) {
+              console.log(ex, "on input:", msg.data);
+          }
+          switch (model.command) {
+              case "HELLO":
+                  this.w = model.w;
+                  this.h = model.h;
+                  this.bg = model.bg;
+                  this.labels = []
+                  this.paths = []
+                  this.drawIt();
+                  break;
+
+              case "LABELS":
+                  this.labels = model.labels
+                  this.paths = model.paths
+                  this.drawIt();
+                  break;
+
+              case "REPORT":
+                  // FIXME: escape HTML in model.text
+                  this.report = (model.text
+                          .replace(/`([^`]*)`/g, '<span class="bg-pink-100 text-neutral-950">$1</span>')
+                          // .replace(/~([^~]*)~/g, '<span style="font-variant-caps: small-caps">$1</span>'))   // this breaks monospacing -- better solution or different font needed
+                          .replace(/~([^~]*)~/g, '<span>$1</span>'))
+                  break;
+
+              case "SET-TITLE":
+                  this.title = model.title;
+                  break;
+
+              case "STATE":
+                  this.paused = model.paused;
+                  this.report = "";
+                  break;
+
+              default:
+                  text = json;
+          }
+      }
+
+      ws.onopen = () => {
+          this.state = "CONNECTED";
+      }
+
+      ws.onclose = () => {
+          this.state = "DISCONNECTED";
+      }
+
+      this.ws = ws;
+  },
+
+  methods: {
+    drawIt() {
+      /** @type {HTMLCanvasElement} */
+      const canvas = this.$refs.plot;
+
+      canvas.width = canvas.clientWidth;
+      canvas.height = canvas.clientHeight;
+
+      /** @type {CanvasRenderingContext2D} */
+      const ctx = canvas.getContext("2d");
+
+      const w = canvas.width, h = canvas.height;
+      const MARGIN = 0.5    // number of tiles on each size
+      const TILE_SIZE = Math.floor(Math.min(w / (this.w + 2 * MARGIN),
+                                            h / (this.h + 2 * MARGIN)) / 2) * 2
+
+      ctx.resetTransform()
+      ctx.translate(0, h)
+      ctx.scale(TILE_SIZE, -TILE_SIZE)
+      ctx.translate(0.5 + MARGIN, 0.5 + MARGIN)
+
+      const view = (xx, yy) => [xx, yy]
+
+      for (let y = 0; y < this.h; y++) {
+        for (let x = 0; x < this.w; x++) {
+          ctx.fillStyle = this.bg[y * this.w + x];
+          ctx.fillRect(x - 0.5, y - 0.5, 1, 1)
+        }
+      }
+
+      for (const path of this.paths) {
+        const path2d = new Path2D(path.d)
+
+        if (path.fill) {
+          ctx.fillStyle = path.fill
+          ctx.fill(path2d)
+        }
+        if (path.stroke) {
+          if (path.linedash) {
+            ctx.setLineDash(path.linedash)
+          }
+          else {
+            ctx.setLineDash([])
+          }
+          ctx.lineWidth = path.linewidth
+          ctx.strokeStyle = path.stroke
+          ctx.stroke(path2d)
+        }
+      }
+
+      ctx.font = "1px 'Inter', sans-serif"
+
+      for (const label of this.labels) {
+        ctx.fillStyle = label.color
+        const [x, y] = view(label.x, label.y)
+        ctx.save()
+        ctx.translate(x, y)
+        ctx.scale(label.fontsize, -label.fontsize)
+        ctx.fillText(label.text, 0, 0)
+        ctx.restore()
+      }
+    },
+
+    pauseOrResume() {
+      this.ws.send("PAUSE")
+    },
+
+    step() {
+      this.ws.send("STEP")
+    }
+  },
+
+  components: {
+    Btn,
+    ConnectionState,
+    Pane,
+    PaneHeading,
+  },
+}
+
+createApp(MyComponent).mount('#app')
+</script>
+
+</body>
+</html>
