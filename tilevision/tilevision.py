@@ -32,21 +32,26 @@ class TV:
         assert len(bg) == w * h
         obj = dict(command="HELLO", w=w, h=h, bg=bg)
         sys.stdout.write(json.dumps(obj) + "\n")
+        sys.stdout.flush()
 
     def send_annotations(self, labels: list[Label], paths: list[Path]):
         obj = dict(command="LABELS",
                    labels=[l.__dict__ for l in labels],
                    paths=[l.__dict__ for l in paths])
         sys.stdout.write(json.dumps(obj) + "\n")
+        sys.stdout.flush()
 
     def send_report(self, text: str):
         obj = dict(command="REPORT", text=text)
         sys.stdout.write(json.dumps(obj) + "\n")
+        sys.stdout.flush()
 
     def send_state(self, paused):
         obj = dict(command="STATE", paused=paused)
         sys.stdout.write(json.dumps(obj) + "\n")
+        sys.stdout.flush()
 
     def send_window_title(self, title: str):
         obj = dict(command="SET-TITLE", title=title)
         sys.stdout.write(json.dumps(obj) + "\n")
+        sys.stdout.flush()

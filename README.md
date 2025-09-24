@@ -4,7 +4,7 @@ Usage example:
         --address=localhost \
         --port=4000 \
         --staticdir=static \
-        python -u -m my_kernel
+        python -m my_kernel
 
 Example kernel:
 
