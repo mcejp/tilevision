@@ -1,6 +1,12 @@
 [build-system]
-requires = [
-  "setuptools >= 40.9.0",
-  "wheel",
-]
+requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "tilevision"
+version = "0.0.0"
+authors = [{name = "mcejp"}]
+requires-python = ">=3.10"
+
+[project.scripts]
+tilevision-run = "tilevision.run:main"

@@ -1,10 +1,6 @@
 Usage example:
 
-    ./websocketd \
-        --address=localhost \
-        --port=4000 \
-        --staticdir=static \
-        python -m my_kernel
+    tilevision-run my_kernel.py
 
 Example kernel:
 
